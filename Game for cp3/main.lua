@@ -1,27 +1,20 @@
+local bullet = require "bullet"
+local player = require "player"
 function love.load() --loads when game is run 
-    player = { -- values for player migrated to own script when more is added
-        y = 200,
-        x = 400,
-        speed = 1,
-        sprite =  love.graphics.newImage("sprites/player-no-ani.png")
-    }
- 
+    print("hiya")
+    player.load()
 end
 function love.update(dt) --what the game checks every frame the is running.
-    if love.keyboard.isDown("right") then 
-        player.x=player.x+player.speed+dt
-    end
-    if love.keyboard.isDown("left") then 
-        player.x=player.x-player.speed+dt
-    end
-    if love.keyboard.isDown("up") then 
-        player.y=player.y-player.speed+dt
-    end
-    if love.keyboard.isDown("down") then 
-        player.y=player.y+player.speed+dt
-    end
-    
+player.update(dt)
+bullet.update(dt)
 end
 function love.draw()-- for graphics 
-    love.graphics.draw(player.sprite,player.x,player.y)
+    player.draw()
+    bullet.draw()
 end
+function CheckCollision(x1,y1,w1,h1, x2,y2,w2,h2)--checks the collision of 2 things
+    return x1 < x2+w2 and
+           x2 < x1+w1 and
+           y1 < y2+h2 and
+           y2 < y1+h1
+  end

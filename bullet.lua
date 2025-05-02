@@ -1,14 +1,16 @@
- bullet = {}
-
+bullet = {}
 bullet.list = {}  -- holds all active bullets
 
-function bullet.fire(x, y)
-    local mx, my = love.mouse.getPosition()
-    print(mx..""..my)
+function bullet.fire(x, y, dir_x, dir_y)
     local speed = 200
-    local dir = math.atan(( my - y ), ( mx - x ))
-    local dx =  speed * math.cos(dir)
-    local dy = speed * math.sin(dir) --im going to be honest, i had some help for the math here, got stuck 
+    
+    local vec_x = dir_x - x
+    local vec_y = dir_y - y
+    local angle = math.atan2(vec_y, vec_x)
+
+    local dx = math.cos(angle) * speed
+    local dy = math.sin(angle) * speed
+
     local newBullet = {
         x = x,
         y = y,
@@ -16,7 +18,7 @@ function bullet.fire(x, y)
         dy = dy,
         radius = 5
     }
-
+    
     table.insert(bullet.list, newBullet)
 end
 

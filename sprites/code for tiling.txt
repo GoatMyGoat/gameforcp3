@@ -1,0 +1,8 @@
+put in the draw section in main.lua 
+
+local tile =love.graphics.newImage("sprites/tile1.png")
+    for tx=0,1280 ,64 do
+        for ty=0,720,64 do
+        love.graphics.draw(tile,tx,ty)
+        end
+    end

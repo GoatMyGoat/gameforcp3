@@ -2,7 +2,7 @@ boss = {}
 
 function boss.load()
     boss.x = 640 -- Start in the middle of the screen
-    boss.y = 400
+    boss.y = 350
     boss.sprite = love.graphics.newImage("sprites/TankBoss.png")
     boss.width = boss.sprite:getWidth()
     boss.height = boss.sprite:getHeight()

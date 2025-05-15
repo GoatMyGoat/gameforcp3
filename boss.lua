@@ -1,32 +1,74 @@
-boss = {}
+-- Boss module for handling the tank boss enemy
+local boss = {}
+local bullet = require "bullet"
+local player = require "player"
+
+-- Constants
+local BOSS_SPEED = 100
+local MAX_HEALTH = 3
+local BULLET_INTERVAL = 2
+local HEALTH_BAR_HEIGHT = 10
+local HEALTH_BAR_WIDTH_RATIO = 0.8
+local HEALTH_BAR_PADDING = 10
+local HEALTH_BAR_BORDER = 2
+
+-- Colors
+local COLORS = {
+    BLACK = {0, 0, 0},
+    RED = {1, 0, 0},
+    GREEN = {0, 1, 0},
+    WHITE = {1, 1, 1}
+}
 
 function boss.load()
+    -- Position
     boss.x = 640 -- Start in the middle of the screen
     boss.y = 350
+    
+    -- Load sprite
     boss.sprite = love.graphics.newImage("sprites/TankBoss.png")
     boss.width = boss.sprite:getWidth()
     boss.height = boss.sprite:getHeight()
-    -- Calculate hitbox dimensions based on sprite and visual inspection
-    boss.hitboxWidth = boss.width  -- 60% of sprite width
-    boss.hitboxHeight = boss.height * 0.5-- 20% of sprite height
-    -- Position the hitbox to match the tank body based on visual inspection
-    boss.hitboxOffsetX = boss.width * 0.45   -- Offset from left edge
-    boss.hitboxOffsetY = 210 -- Offset from top edge
-    boss.speed = 100
+    
+    -- Hitbox (adjusted to match the tank body visually)
+    boss.hitboxWidth = boss.width
+    boss.hitboxHeight = boss.height * 0.5
+    boss.hitboxOffsetX = boss.width * 0.45
+    boss.hitboxOffsetY = 210
+    
+    -- Movement
+    boss.speed = BOSS_SPEED
     boss.direction = 1 -- 1 for right, -1 for left
-    boss.health = 3
-    boss.maxHealth = 3
+    
+    
+    -- Combat stats
+    boss.health = MAX_HEALTH
+    boss.maxHealth = MAX_HEALTH
+    
+    -- Bullet firing
     boss.bulletTimer = 0
-    boss.bulletInterval = 2 -- Shoot every 2 seconds
+    boss.bulletInterval = BULLET_INTERVAL
     boss.bulletColor = "red" -- Alternates between red and blue
+    
+    -- State
+    boss.active = true
 end
 
 function boss.update(dt)
+    -- Only update if boss is active
+    if boss.health <= 0 then
+        boss.active = false
+        return
+    end
+    
     -- Move back and forth
     boss.x = boss.x + boss.speed * boss.direction * dt
     
+    -- Get screen width once
+    local screenWidth = love.graphics.getWidth()
+    
     -- Change direction when reaching screen edges
-    if boss.x > love.graphics.getWidth() - boss.width - 400 then
+    if boss.x > screenWidth - boss.width - 400 then
         boss.direction = -1
     elseif boss.x < 0 then
         boss.direction = 1
@@ -37,7 +79,7 @@ function boss.update(dt)
     if boss.bulletTimer >= boss.bulletInterval then
         boss.bulletTimer = 0
         
-        -- Fire bullet at player from the center of the hitbox
+        -- Calculate bullet spawn position
         local bossHitboxX = boss.x + boss.hitboxOffsetX
         local bossHitboxY = boss.y + boss.hitboxOffsetY
         
@@ -55,23 +97,27 @@ function boss.update(dt)
     end
     
     -- Check for bullet collisions with boss
+    boss.checkBulletCollisions()
+end
+
+-- Check for bullet collisions with boss
+function boss.checkBulletCollisions()
     for i = #bullet.list, 1, -1 do
         local b = bullet.list[i]
         
         -- Only player bullets can hit the boss
-        local bossHitboxX = boss.x + boss.hitboxOffsetX
-        local bossHitboxY = boss.y + boss.hitboxOffsetY
-        
-        if b.isPlayerBullet and CheckCollision(
-            bossHitboxX - boss.hitboxWidth/2, bossHitboxY - boss.hitboxHeight/2, boss.hitboxWidth, boss.hitboxHeight,
-            b.x - b.radius, b.y - b.radius, b.radius * 2, b.radius * 2
-        ) then
-            boss.health = boss.health - 1
-            table.remove(bullet.list, i)
+        if b.isPlayerBullet then
+            local bossHitboxX = boss.x + boss.hitboxOffsetX
+            local bossHitboxY = boss.y + boss.hitboxOffsetY
             
-            -- Boss is defeated
-            if boss.health <= 0 then
-                boss.active = false
+            if CheckCollision(
+                bossHitboxX - boss.hitboxWidth/2, bossHitboxY - boss.hitboxHeight/2,
+                boss.hitboxWidth, boss.hitboxHeight,
+                b.x - b.radius, b.y - b.radius,
+                b.radius * 2, b.radius * 2
+            ) then
+                boss.health = boss.health - 1
+                table.remove(bullet.list, i)
             end
         end
     end
@@ -79,30 +125,43 @@ end
 
 function boss.draw()
     if boss.health > 0 then
+        -- Draw boss sprite
         love.graphics.draw(boss.sprite, boss.x, boss.y)
         
-        -- Draw health bar directly below the boss
-        local barWidth = boss.width * 0.8 -- Make the health bar 80% of the boss width
-        local barHeight = 10
-        local barX = boss.x + (boss.width - barWidth) / 2 -- Center the bar under the boss
-        local barY = boss.y + boss.height + 10 -- Position it 10 pixels below the boss
-        
-        -- Background/border of health bar (black outline)
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.rectangle("fill", barX - 2, barY - 2, barWidth + 4, barHeight + 4)
-        
-        -- Background of health bar (red for empty health)
-        love.graphics.setColor(1, 0, 0)
-        love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
-        
-        -- Health portion (green for remaining health)
-        local healthWidth = (boss.health / boss.maxHealth) * barWidth
-        love.graphics.setColor(0, 1, 0)
-        love.graphics.rectangle("fill", barX, barY, healthWidth, barHeight)
-        
-        -- Reset color
-        love.graphics.setColor(1, 1, 1)
+        -- Draw health bar
+        boss.drawHealthBar()
     end
+end
+
+-- Draw the boss health bar
+function boss.drawHealthBar()
+    -- Calculate health bar dimensions and position
+    local barWidth = boss.width * HEALTH_BAR_WIDTH_RATIO
+    local barHeight = HEALTH_BAR_HEIGHT
+    local barX = boss.x + (boss.width - barWidth) / 2
+    local barY = boss.y + boss.height + HEALTH_BAR_PADDING
+    
+    -- Background/border of health bar (black outline)
+    love.graphics.setColor(COLORS.BLACK)
+    love.graphics.rectangle(
+        "fill",
+        barX - HEALTH_BAR_BORDER,
+        barY - HEALTH_BAR_BORDER,
+        barWidth + (HEALTH_BAR_BORDER * 2),
+        barHeight + (HEALTH_BAR_BORDER * 2)
+    )
+    
+    -- Background of health bar (red for empty health)
+    love.graphics.setColor(COLORS.RED)
+    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
+    
+    -- Health portion (green for remaining health)
+    local healthWidth = (boss.health / boss.maxHealth) * barWidth
+    love.graphics.setColor(COLORS.GREEN)
+    love.graphics.rectangle("fill", barX, barY, healthWidth, barHeight)
+    
+    -- Reset color
+    love.graphics.setColor(COLORS.WHITE)
 end
 
 return boss

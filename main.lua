@@ -1,37 +1,79 @@
+-- Main game file for Color Swap Game
+-- A game where the player must match colors with bullets to defeat a boss
+
+-- Import modules
 local bullet = require "bullet"
 local player = require "player"
 local boss = require "boss"
 
--- Win sequence final message
-local winMessage = "You have transcended."
+-- Constants
+local WIN_MESSAGE = "You have transcended."
+local TOWER_PADDING = 20
+local TOWER_DOOR_WIDTH = 60
+local TOWER_DOOR_HEIGHT = 120
+local VIGNETTE_SEGMENTS = 20
+local DEBUG_FONT_SIZE = 14
+local GAME_OVER_FONT_SIZE = 40
+local WIN_MESSAGE_FONT_SIZE = 30
 
-function love.load() --loads when game is run
-    print("hiya")
+-- Colors
+local COLORS = {
+    BLACK = {0, 0, 0},
+    WHITE = {1, 1, 1},
+    RED = {1, 0, 0},
+    GREEN = {0, 1, 0, 0.5},
+    BLUE = {0, 0, 1, 0.5}
+}
+
+-- Local variables
+local towerImage, towerDoorImage
+local towerWidth, towerHeight
+local screenWidth, screenHeight
+local towerX, towerY
+local towerDoorX, towerDoorY
+local towerDoorWidth, towerDoorHeight
+local gameState
+local backgroundTile
+local debugFont, gameOverFont, winMessageFont
+
+-- Initialize the game
+function love.load()
+    -- Load game modules
     player.load()
     boss.load()
+    
+    -- Load fonts
+    debugFont = love.graphics.newFont(DEBUG_FONT_SIZE)
+    gameOverFont = love.graphics.newFont(GAME_OVER_FONT_SIZE)
+    winMessageFont = love.graphics.newFont(WIN_MESSAGE_FONT_SIZE)
     
     -- Load tower images
     towerImage = love.graphics.newImage("sprites/tower.png")
     towerDoorImage = love.graphics.newImage("sprites/tower-door.png")
     towerWidth, towerHeight = towerImage:getDimensions()
     
-    -- Calculate tower position in bottom right corner (with 20px padding)
+    -- Load background tile
+    backgroundTile = love.graphics.newImage("sprites/tile1.png")
+    
+    -- Get screen dimensions
     screenWidth, screenHeight = love.graphics.getDimensions()
-    towerX = screenWidth - towerWidth - 20
+    
+    -- Calculate tower position in bottom right corner
+    towerX = screenWidth - towerWidth - TOWER_PADDING
     towerY = screenHeight - towerHeight
     
-    -- Create tower door hitbox (60x120 at bottom middle of tower)
-    towerDoorWidth = 60
-    towerDoorHeight = 120
+    -- Create tower door hitbox (at bottom middle of tower)
+    towerDoorWidth = TOWER_DOOR_WIDTH
+    towerDoorHeight = TOWER_DOOR_HEIGHT
     towerDoorX = towerX + (towerWidth / 2) - (towerDoorWidth / 2)
     towerDoorY = towerY + towerHeight - towerDoorHeight
     
-    -- Game state
+    -- Initialize game state
     gameState = {
         gameOver = false,
         bossDefeated = false,
         inVoid = false,
-        debugMode = false, -- Debug mode flag for showing hitboxes
+        debugMode = false,
         
         -- Win sequence state
         winSequence = {
@@ -43,22 +85,24 @@ function love.load() --loads when game is run
             completed = false
         }
     }
-    
 end
 
 -- Start the win sequence
 function startWinSequence()
-    gameState.winSequence.active = true
-    gameState.winSequence.timer = 0
-    gameState.winSequence.messageFade = 0
-    gameState.winSequence.silhouetteProgress = 0
-    gameState.winSequence.fadeToBlackProgress = 0
-    gameState.winSequence.completed = false
+    local ws = gameState.winSequence
+    ws.active = true
+    ws.timer = 0
+    ws.messageFade = 0
+    ws.silhouetteProgress = 0
+    ws.fadeToBlackProgress = 0
+    ws.completed = false
 end
 
-function love.update(dt) --what the game checks every frame the is running.
+-- Update game state
+function love.update(dt)
     -- Only update if game is not over
     if not gameState.gameOver then
+        -- Always update player
         player.update(dt)
         
         -- Only update bullets and boss if not in void and boss not defeated
@@ -78,23 +122,27 @@ function love.update(dt) --what the game checks every frame the is running.
         
         -- Check if player enters tower door (only when boss is defeated)
         if gameState.bossDefeated and not gameState.inVoid then
-            local playerHitboxX = player.x + player.hitboxOffsetX
-            local playerHitboxY = player.y + player.hitboxOffsetY
-            
-            if CheckCollision(
-                playerHitboxX, playerHitboxY, player.width, player.height,
-                towerDoorX, towerDoorY, towerDoorWidth, towerDoorHeight
-            ) then
-                gameState.inVoid = true
-                startWinSequence() -- Start the win sequence when entering void
-            end
+            checkTowerDoorCollision()
         end
         
         -- Update win sequence if active
         if gameState.inVoid and gameState.winSequence.active then
             updateWinSequence(dt)
         end
-        
+    end
+end
+
+-- Check if player collides with tower door
+function checkTowerDoorCollision()
+    local playerHitboxX = player.x + player.hitboxOffsetX
+    local playerHitboxY = player.y + player.hitboxOffsetY
+    
+    if CheckCollision(
+        playerHitboxX, playerHitboxY, player.width, player.height,
+        towerDoorX, towerDoorY, towerDoorWidth, towerDoorHeight
+    ) then
+        gameState.inVoid = true
+        startWinSequence()
     end
 end
 
@@ -129,6 +177,7 @@ function updateWinSequence(dt)
     end
 end
 
+-- Handle key presses
 function love.keypressed(key)
     -- Toggle debug mode with F1 key
     if key == "f1" then
@@ -137,60 +186,75 @@ function love.keypressed(key)
     end
 end
 
-function love.draw()-- for graphics
+-- Draw the game
+function love.draw()
     if gameState.inVoid then
-        -- Draw white void background
-        love.graphics.setBackgroundColor(1, 1, 1)
-        
-        -- Draw void elements if win sequence is active
-        if gameState.winSequence.active then
-            drawWinSequence()
-        end
-        
-        -- Draw player in void (with silhouette effect if applicable)
-        if gameState.winSequence.active and gameState.winSequence.silhouetteProgress > 0 then
-            -- Draw player with silhouette effect
-            drawPlayerSilhouette()
-        else
-            -- Draw normal player
-            player.draw()
-        end
+        drawVoidScene()
     else
-        -- Reset background color
-        love.graphics.setBackgroundColor(0, 0, 0)
-        
-        -- Draw tiled background
-        local tile = love.graphics.newImage("sprites/tile1.png")
-        for tx=0,1280 ,65 do
-            for ty=0,720,65 do
-                love.graphics.draw(tile,tx,ty)
-            end
-        end
-        
-        -- Draw tower in bottom right corner (change sprite if boss is defeated)
-        if gameState.bossDefeated then
-            love.graphics.draw(towerDoorImage, towerX, towerY)
-        else
-            love.graphics.draw(towerImage, towerX, towerY)
-        end
-        
-        -- Draw game elements
-        player.draw()
-        boss.draw()
-        bullet.draw() -- Draw bullets last so they appear on top
-        
-        -- Draw game over message if applicable
-        if gameState.gameOver then
-            love.graphics.setColor(1, 0, 0)
-            love.graphics.setFont(love.graphics.newFont(40))
-            love.graphics.printf("GAME OVER", 0, love.graphics.getHeight()/2 - 20, love.graphics.getWidth(), "center")
-            love.graphics.setColor(1, 1, 1)
-        end
+        drawGameScene()
     end
     
     -- Draw hitboxes in debug mode
     if gameState.debugMode then
         drawHitboxes()
+    end
+end
+
+-- Draw the void scene (white background with win sequence)
+function drawVoidScene()
+    -- Draw white void background
+    love.graphics.setBackgroundColor(COLORS.WHITE)
+    
+    -- Draw void elements if win sequence is active
+    if gameState.winSequence.active then
+        drawWinSequence()
+    end
+    
+    -- Draw player in void (with silhouette effect if applicable)
+    if gameState.winSequence.active and gameState.winSequence.silhouetteProgress > 0 then
+        drawPlayerSilhouette()
+    else
+        player.draw()
+    end
+end
+
+-- Draw the main game scene
+function drawGameScene()
+    -- Reset background color
+    love.graphics.setBackgroundColor(COLORS.BLACK)
+    
+    -- Draw tiled background
+    drawTiledBackground()
+    
+    -- Draw tower in bottom right corner (change sprite if boss is defeated)
+    if gameState.bossDefeated then
+        love.graphics.draw(towerDoorImage, towerX, towerY)
+    else
+        love.graphics.draw(towerImage, towerX, towerY)
+    end
+    
+    -- Draw game elements
+    boss.draw()
+    player.draw() -- Draw player after boss so it appears in front
+    bullet.draw() -- Draw bullets last so they appear on top
+    
+    -- Draw game over message if applicable
+    if gameState.gameOver then
+        love.graphics.setColor(COLORS.RED)
+        love.graphics.setFont(gameOverFont)
+        love.graphics.printf("GAME OVER", 0, screenHeight/2 - 20, screenWidth, "center")
+        love.graphics.setColor(COLORS.WHITE)
+    end
+end
+
+-- Draw tiled background
+function drawTiledBackground()
+    local tileWidth, tileHeight = backgroundTile:getDimensions()
+    
+    for tx = 0, screenWidth, tileWidth do
+        for ty = 0, screenHeight, tileHeight do
+            love.graphics.draw(backgroundTile, tx, ty)
+        end
     end
 end
 
@@ -205,9 +269,9 @@ function drawWinSequence()
     -- Draw text message
     if ws.messageFade > 0 then
         love.graphics.setColor(0, 0, 0, ws.messageFade)
-        love.graphics.setFont(love.graphics.newFont(30))
-        love.graphics.printf(winMessage, 0, screenHeight * 0.4, screenWidth, "center")
-        love.graphics.setColor(1, 1, 1)
+        love.graphics.setFont(winMessageFont)
+        love.graphics.printf(WIN_MESSAGE, 0, screenHeight * 0.4, screenWidth, "center")
+        love.graphics.setColor(COLORS.WHITE)
     end
 end
 
@@ -222,8 +286,6 @@ function drawPlayerSilhouette()
     
     -- Draw player sprite
     love.graphics.draw(player.sprite, player.x + player.sprite_offset_x, player.y + player.sprite_offset_y)
-    
-    -- Don't draw health or bullets in silhouette mode
     
     -- Restore color
     love.graphics.setColor(r, g, b, a)
@@ -240,11 +302,9 @@ function drawVignette(intensity, fadeToBlackProgress)
     end
     
     -- Draw a gradient from transparent in the center to semi-opaque at the edges
-    local segments = 20
-    for i = 1, segments do
+    for i = 1, VIGNETTE_SEGMENTS do
         -- Calculate alpha based on segment position and intensity
-        -- As fadeToBlackProgress increases, the circles become more visible (darker)
-        local baseAlpha = (i / segments) * intensity
+        local baseAlpha = (i / VIGNETTE_SEGMENTS) * intensity
         local adjustedAlpha = math.min(baseAlpha + fadeToBlackProgress * 0.5, 1)
         
         love.graphics.setColor(0, 0, 0, adjustedAlpha)
@@ -253,7 +313,7 @@ function drawVignette(intensity, fadeToBlackProgress)
         love.graphics.stencil(function()
             -- As fadeToBlackProgress increases, the inner circles get smaller
             local radiusMultiplier = 1 - fadeToBlackProgress * 0.5
-            local innerRadius = screenWidth * (1 - i / segments) * radiusMultiplier
+            local innerRadius = screenWidth * (1 - i / VIGNETTE_SEGMENTS) * radiusMultiplier
             love.graphics.circle("fill", screenWidth / 2, screenHeight / 2, innerRadius)
         end, "replace", 1)
         
@@ -262,45 +322,47 @@ function drawVignette(intensity, fadeToBlackProgress)
         love.graphics.setStencilTest()
     end
     
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(COLORS.WHITE)
 end
 
 -- Function to draw hitboxes for all game objects
 function drawHitboxes()
-    love.graphics.setColor(0, 1, 0, 0.5) -- Green with transparency
+    love.graphics.setColor(COLORS.GREEN)
     
-    -- Player hitbox (aligned with the visible sprite)
-    -- The hitbox should be centered on the player's visible sprite
+    -- Player hitbox
     local playerHitboxX = player.x + player.hitboxOffsetX
     local playerHitboxY = player.y + player.hitboxOffsetY
-    love.graphics.rectangle("line", playerHitboxX, playerHitboxY,
-                           player.width, player.height)
+    love.graphics.rectangle("line", playerHitboxX, playerHitboxY, player.width, player.height)
     
-    -- Draw a dot at player position for reference
+    -- Draw dots at player positions for reference
     love.graphics.setPointSize(5)
     love.graphics.points(player.x, player.y)
-    love.graphics.setColor(1, 0, 0)
+    love.graphics.setColor(COLORS.RED)
     love.graphics.points(playerHitboxX + player.width/2, playerHitboxY + player.height/2)
+    love.graphics.setColor(COLORS.GREEN)
     
     -- Boss hitbox (if alive)
     if boss.health > 0 and not gameState.inVoid then
-        -- Use the boss's calculated hitbox values
         local bossHitboxX = boss.x + boss.hitboxOffsetX
         local bossHitboxY = boss.y + boss.hitboxOffsetY
-        love.graphics.rectangle("line", bossHitboxX - boss.hitboxWidth/2, bossHitboxY - boss.hitboxHeight/2,
-                               boss.hitboxWidth, boss.hitboxHeight)
+        love.graphics.rectangle("line",
+            bossHitboxX - boss.hitboxWidth/2,
+            bossHitboxY - boss.hitboxHeight/2,
+            boss.hitboxWidth,
+            boss.hitboxHeight
+        )
         
         -- Draw a dot at boss center for reference
-        love.graphics.setColor(1, 0, 0)
+        love.graphics.setColor(COLORS.RED)
         love.graphics.points(bossHitboxX, bossHitboxY)
-        love.graphics.setColor(0, 1, 0, 0.5)
+        love.graphics.setColor(COLORS.GREEN)
     end
     
     -- Tower door hitbox (only when boss is defeated)
     if gameState.bossDefeated and not gameState.inVoid then
-        love.graphics.setColor(0, 0, 1, 0.5) -- Blue with transparency
+        love.graphics.setColor(COLORS.BLUE)
         love.graphics.rectangle("line", towerDoorX, towerDoorY, towerDoorWidth, towerDoorHeight)
-        love.graphics.setColor(0, 1, 0, 0.5) -- Back to green
+        love.graphics.setColor(COLORS.GREEN)
     end
     
     -- Bullet hitboxes
@@ -312,14 +374,15 @@ function drawHitboxes()
     
     -- Draw debug text
     love.graphics.setColor(0, 1, 0)
-    love.graphics.setFont(love.graphics.newFont(14))
-    love.graphics.print("DEBUG MODE (F1 to toggle)", 10, love.graphics.getHeight() - 30)
-    love.graphics.setColor(1, 1, 1) -- Reset color
+    love.graphics.setFont(debugFont)
+    love.graphics.print("DEBUG MODE (F1 to toggle)", 10, screenHeight - 30)
+    love.graphics.setColor(COLORS.WHITE)
 end
 
-function CheckCollision(x1,y1,w1,h1, x2,y2,w2,h2)--checks the collision of 2 things
+-- Check collision between two rectangles
+function CheckCollision(x1, y1, w1, h1, x2, y2, w2, h2)
     return x1 < x2+w2 and
            x2 < x1+w1 and
            y1 < y2+h2 and
            y2 < y1+h1
-  end
+end

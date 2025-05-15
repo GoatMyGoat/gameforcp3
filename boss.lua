@@ -7,11 +7,11 @@ function boss.load()
     boss.width = boss.sprite:getWidth()
     boss.height = boss.sprite:getHeight()
     -- Calculate hitbox dimensions based on sprite and visual inspection
-    boss.hitboxWidth = boss.width * 0.6  -- 60% of sprite width
-    boss.hitboxHeight = boss.height * 0.2 -- 20% of sprite height
+    boss.hitboxWidth = boss.width  -- 60% of sprite width
+    boss.hitboxHeight = boss.height * 0.5-- 20% of sprite height
     -- Position the hitbox to match the tank body based on visual inspection
-    boss.hitboxOffsetX = boss.width * 0.4   -- Offset from left edge
-    boss.hitboxOffsetY = boss.height * 0.3  -- Offset from top edge
+    boss.hitboxOffsetX = boss.width * 0.45   -- Offset from left edge
+    boss.hitboxOffsetY = 210 -- Offset from top edge
     boss.speed = 100
     boss.direction = 1 -- 1 for right, -1 for left
     boss.health = 3

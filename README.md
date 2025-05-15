@@ -1,1 +1,1 @@
-if you could look at the bullter code that would be great. tried getting it working there are some obvious issues with it. also the bullets don't despawn
+add hearts if you want, they are here

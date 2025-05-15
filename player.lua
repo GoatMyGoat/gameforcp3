@@ -8,11 +8,22 @@ function player.load()
     player.y = 200
     player.sprite_offset_x = -40
     player.sprite_offset_y = -110
-    player.width = 25
-    player.height = 25
+    player.spriteRed = love.graphics.newImage("sprites/player-no-ani.png")
+    player.spriteBlue = love.graphics.newImage("sprites/player-no-ani-blue.png")
+    player.sprite = player.spriteRed
+    -- Get dimensions from sprite
+    player.spriteWidth = player.sprite:getWidth()
+    player.spriteHeight = player.sprite:getHeight()
+    -- Use a smaller hitbox than the full sprite for better gameplay
+    player.width = player.spriteWidth / 2 -- 15% of sprite width
+    player.height = player.spriteHeight / 2-- 15% of sprite height
+    player.hitboxOffsetX = player.sprite_offset_x + 30
+    player.hitboxOffsetY = player.sprite_offset_y + 60
     player.speed = 300
-    player.health = 3 
-    player.sprite = love.graphics.newImage("sprites/player-no-ani.png")
+    player.health = 3
+    player.bulletCount = 3 -- Number of bullets the player has
+    player.bulletCooldown = 0 -- Cooldown timer for shooting
+    player.bulletCooldownMax = 0.3 -- Maximum cooldown time in seconds
     player.isPlayer = true
     player.colorSwap = true -- true = red, false = blue
 end
@@ -24,6 +35,12 @@ function player.update(dt)
     if love.keyboard.isDown("s") then player.y = player.y + player.speed * dt end -- moving
     if love.keyboard.isDown("space") and rSwap == true  then -- swapping
         player.colorSwap = not player.colorSwap
+        -- Update sprite based on color
+        if player.colorSwap then
+            player.sprite = player.spriteRed
+        else
+            player.sprite = player.spriteBlue
+        end
         rSwap=false
         downSwap = .5
     end
@@ -34,9 +51,25 @@ function player.update(dt)
         end
     end
 
-    if love.mouse.isDown(1) then 
+    -- Update bullet cooldown
+    if player.bulletCooldown > 0 then
+        player.bulletCooldown = player.bulletCooldown - dt
+    end
+
+    -- Fire bullet if mouse is clicked, cooldown is over, and player has bullets
+    if love.mouse.isDown(1) and player.bulletCooldown <= 0 and player.bulletCount > 0 then
         local mx, my = love.mouse.getPosition()
-        bullet.fire(player.x, player.y, mx, my)
+        local playerHitboxX = player.x + player.hitboxOffsetX
+        local playerHitboxY = player.y + player.hitboxOffsetY
+        bullet.fire(playerHitboxX + player.width/2, playerHitboxY + player.height/2, mx, my)
+        player.bulletCount = player.bulletCount - 1 -- Decrease bullet count
+        player.bulletCooldown = player.bulletCooldownMax -- Reset cooldown
+    end
+    
+    -- Game over check
+    if player.health <= 0 then
+        -- Handle game over (could be expanded later)
+        player.health = 0
     end
 end
 
@@ -45,9 +78,10 @@ function player.draw()
     font = love.graphics.newFont(25)
     love.graphics.setFont(font)
     love.graphics.print("Health:"..player.health,1,1)
-    if player.colorSwap == true then 
+    love.graphics.print("Bullets:"..player.bulletCount,1,50) -- Display bullet count
+    if player.colorSwap == true then
         love.graphics.print("Red", 1, 25)
-    else 
+    else
         love.graphics.print("Blue", 1, 25) end
     love.graphics.newFont()
 end

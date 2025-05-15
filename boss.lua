@@ -41,8 +41,8 @@ function boss.update(dt)
         local bossHitboxX = boss.x + boss.hitboxOffsetX
         local bossHitboxY = boss.y + boss.hitboxOffsetY
         
-        local bulletX = bossHitboxX
-        local bulletY = bossHitboxY + boss.hitboxHeight/2
+        local bulletX = bossHitboxX + 35
+        local bulletY = bossHitboxY + boss.hitboxHeight/2 - 250
         
         -- Alternate bullet colors
         if boss.bulletColor == "red" then

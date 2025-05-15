@@ -11,6 +11,13 @@ function player.load()
     player.spriteRed = love.graphics.newImage("sprites/player-no-ani.png")
     player.spriteBlue = love.graphics.newImage("sprites/player-no-ani-blue.png")
     player.sprite = player.spriteRed
+    
+    -- Load heart sprites for health display
+    player.heartFull = love.graphics.newImage("sprites/Heart-Full.png")
+    player.heartEmpty = love.graphics.newImage("sprites/Heart-Empty.png")
+    player.heartWidth = player.heartFull:getWidth()
+    player.heartHeight = player.heartFull:getHeight()
+    player.heartSpacing = 5 -- Space between hearts
     -- Get dimensions from sprite
     player.spriteWidth = player.sprite:getWidth()
     player.spriteHeight = player.sprite:getHeight()
@@ -74,16 +81,39 @@ function player.update(dt)
 end
 
 function player.draw()
+    -- Draw player sprite
     love.graphics.draw(player.sprite, player.x + player.sprite_offset_x, player.y + player.sprite_offset_y)
+    
+    -- Draw health bar (hearts) below the player
+    player.drawHealthBar()
+    
+    -- Draw UI text
     font = love.graphics.newFont(25)
     love.graphics.setFont(font)
-    love.graphics.print("Health:"..player.health,1,1)
-    love.graphics.print("Bullets:"..player.bulletCount,1,50) -- Display bullet count
-    if player.colorSwap == true then
-        love.graphics.print("Red", 1, 25)
-    else
-        love.graphics.print("Blue", 1, 25) end
+    love.graphics.print("Bullets:"..player.bulletCount,1,1) -- Display bullet count only
     love.graphics.newFont()
+end
+
+-- Function to draw the health bar with heart sprites
+function player.drawHealthBar()
+    -- Calculate position for hearts (centered below the player)
+    local playerHitboxX = player.x + player.hitboxOffsetX
+    local playerHitboxY = player.y + player.hitboxOffsetY
+    local totalWidth = (player.heartWidth * 3) + (player.heartSpacing * 2)
+    local startX = playerHitboxX + (player.width / 2) - (totalWidth / 2)
+    local startY = playerHitboxY + player.height + 10 -- 10 pixels below player hitbox
+    
+    -- Draw hearts based on current health
+    for i = 1, 3 do
+        local heartX = startX + (i-1) * (player.heartWidth + player.heartSpacing)
+        if i <= player.health then
+            -- Draw full heart
+            love.graphics.draw(player.heartFull, heartX, startY)
+        else
+            -- Draw empty heart
+            love.graphics.draw(player.heartEmpty, heartX, startY)
+        end
+    end
 end
 
 return player

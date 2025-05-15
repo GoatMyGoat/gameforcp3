@@ -2,7 +2,7 @@ boss = {}
 
 function boss.load()
     boss.x = 640 -- Start in the middle of the screen
-    boss.y = 100
+    boss.y = 400
     boss.sprite = love.graphics.newImage("sprites/TankBoss.png")
     boss.width = boss.sprite:getWidth()
     boss.height = boss.sprite:getHeight()
@@ -26,7 +26,7 @@ function boss.update(dt)
     boss.x = boss.x + boss.speed * boss.direction * dt
     
     -- Change direction when reaching screen edges
-    if boss.x > love.graphics.getWidth() - boss.width then
+    if boss.x > love.graphics.getWidth() - boss.width - 400 then
         boss.direction = -1
     elseif boss.x < 0 then
         boss.direction = 1
@@ -81,28 +81,27 @@ function boss.draw()
     if boss.health > 0 then
         love.graphics.draw(boss.sprite, boss.x, boss.y)
         
-        -- Draw health bar at the bottom of the screen
-        local barWidth = love.graphics.getWidth()
-        local barHeight = 20
-        local barY = love.graphics.getHeight() - barHeight
+        -- Draw health bar directly below the boss
+        local barWidth = boss.width * 0.8 -- Make the health bar 80% of the boss width
+        local barHeight = 10
+        local barX = boss.x + (boss.width - barWidth) / 2 -- Center the bar under the boss
+        local barY = boss.y + boss.height + 10 -- Position it 10 pixels below the boss
         
-        -- Background of health bar
-        love.graphics.setColor(0.2, 0.2, 0.2)
-        love.graphics.rectangle("fill", 0, barY, barWidth, barHeight)
+        -- Background/border of health bar (black outline)
+        love.graphics.setColor(0, 0, 0)
+        love.graphics.rectangle("fill", barX - 2, barY - 2, barWidth + 4, barHeight + 4)
         
-        -- Health portion
-        local healthWidth = (boss.health / boss.maxHealth) * barWidth
+        -- Background of health bar (red for empty health)
         love.graphics.setColor(1, 0, 0)
-        love.graphics.rectangle("fill", 0, barY, healthWidth, barHeight)
+        love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
+        
+        -- Health portion (green for remaining health)
+        local healthWidth = (boss.health / boss.maxHealth) * barWidth
+        love.graphics.setColor(0, 1, 0)
+        love.graphics.rectangle("fill", barX, barY, healthWidth, barHeight)
         
         -- Reset color
         love.graphics.setColor(1, 1, 1)
-        
-        -- Draw health text
-        local font = love.graphics.newFont(16)
-        love.graphics.setFont(font)
-        love.graphics.print("Boss Health: " .. boss.health .. "/" .. boss.maxHealth, barWidth/2 - 60, barY + 2)
-        love.graphics.setFont(love.graphics.newFont())
     end
 end
 

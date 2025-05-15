@@ -7,6 +7,15 @@ function love.load() --loads when game is run
     player.load()
     boss.load()
     
+    -- Load tower image once
+    towerImage = love.graphics.newImage("sprites/tower.png")
+    towerWidth, towerHeight = towerImage:getDimensions()
+    
+    -- Calculate tower position in bottom right corner (with 20px padding)
+    screenWidth, screenHeight = love.graphics.getDimensions()
+    towerX = screenWidth - towerWidth - 20
+    towerY = screenHeight - towerHeight
+    
     -- Game state
     gameState = {
         gameOver = false,
@@ -49,12 +58,13 @@ function love.draw()-- for graphics
         end
     end
     
-    love.graphics.draw(love.graphics.newImage("sprites/tower.png"), 500, 200)
+    -- Draw tower in bottom right corner
+    love.graphics.draw(towerImage, towerX, towerY)
     
     -- Draw game elements
     player.draw()
-    bullet.draw()
     boss.draw()
+    bullet.draw() -- Draw bullets last so they appear on top
     
     -- Draw game over message if applicable
     if gameState.gameOver then

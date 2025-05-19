@@ -16,5 +16,5 @@ In this game, you control a character that can switch between red and blue color
 - **F1**: Show hitboxes
 
 ## Credits
-Boss AI, health systems, ending sequence: Maxwell Leonard
+Boss AI, health systems, ending sequence: Maxwell Leonard  
 Assets, player movement and bullet code: Peter Kushnir
